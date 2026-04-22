@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id       String        @id @default(uuid())
+  username String        @unique
+  fullName String
+  logs     ActivityLog[]
+  files    File[]
+}
+
+model File {
+  id           String        @id @default(uuid())
+  originalName String
+  storedName   String
+  categoryId   Int
+  uploadedById String
+  createdAt    DateTime      @default(now())
+  logs         ActivityLog[]
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id])
+  category     Category      @relation(fields: [categoryId], references: [id])
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  files File[]
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  action    String
+  fileId    String?
+  timestamp DateTime @default(now())
+  file      File?    @relation(fields: [fileId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
