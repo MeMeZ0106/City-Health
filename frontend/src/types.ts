@@ -2,6 +2,13 @@ export interface User {
   id: string;
   username: string;
   fullName: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  province: string;
+  cityMun: string;
+  barangay: string;
+  isAdmin: boolean;
 }
 
 export interface Category {

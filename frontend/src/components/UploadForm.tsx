@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { getCategories, uploadFile } from '../api/fileApi';
-import { CURRENT_USER } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 import type { Category } from '../types';
 
 const UploadForm: React.FC = () => {
+  const { user, token } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number>(1);
-  const [uploaderName, setUploaderName] = useState<string>(CURRENT_USER.fullName);
   const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' | 'info' | null }>({ message: '', type: null });
   const [loading, setLoading] = useState<boolean>(true);
   const [uploading, setUploading] = useState<boolean>(false);
@@ -34,19 +34,16 @@ const UploadForm: React.FC = () => {
     e.preventDefault();
     if (!file) return setStatus({ message: 'Please select a file.', type: 'error' });
     if (!categories.length) return setStatus({ message: 'Waiting for categories to load.', type: 'info' });
+    if (!user) return setStatus({ message: 'User not authenticated.', type: 'error' });
 
-    const username = uploaderName.trim().toLowerCase().replace(/\s+/g, '.');
     const formData = new FormData();
     formData.append('file', file);
     formData.append('categoryId', categoryId.toString());
-    formData.append('userId', CURRENT_USER.id);
-    formData.append('username', username);
-    formData.append('fullName', uploaderName.trim());
 
     try {
       setUploading(true);
       setStatus({ message: 'Uploading document...', type: 'info' });
-      await uploadFile(formData);
+      await uploadFile(formData, token || '');
       setStatus({ message: 'File uploaded successfully!', type: 'success' });
       setFile(null);
       // Reset file input
@@ -68,17 +65,6 @@ const UploadForm: React.FC = () => {
       
       <div className="upload-card">
         <form onSubmit={handleUpload}>
-          <div className="form-group">
-            <label>Uploader Full Name</label>
-            <input
-              type="text"
-              value={uploaderName}
-              onChange={(e) => setUploaderName(e.target.value)}
-              placeholder="Enter your full name"
-              required
-            />
-          </div>
-
           <div className="form-grid">
             <div className="form-group">
               <label>Document Category</label>

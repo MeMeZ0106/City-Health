@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { uploadFile, getFiles, getFilesByUser, getCategories, viewFile, deleteFile, updateFile } from '../controllers/fileController.js';
+import { uploadFile, getFiles, getFilesByUser, getCategories, viewFile, deleteFile, updateFile, searchFiles } from '../controllers/fileController.js';
 
 const router = Router();
 
@@ -16,11 +16,17 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max upload size
+  },
+});
 
 // Routes
 router.get('/categories', getCategories);
 router.post('/upload', upload.single('file'), uploadFile);
+router.get('/search', searchFiles);
 router.get('/user/:username', getFilesByUser);
 router.get('/:id', viewFile);
 router.patch('/:id', updateFile);

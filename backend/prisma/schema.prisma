@@ -8,11 +8,21 @@ datasource db {
 }
 
 model User {
-  id       String        @id @default(uuid())
-  username String        @unique
-  fullName String
-  logs     ActivityLog[]
-  files    File[]
+  id                String        @id @default(uuid())
+  email             String        @unique
+  username          String        @unique
+  fullName          String
+  password          String
+  phoneNumber       String
+  address           String
+  province          String
+  cityMun           String
+  barangay          String
+  isAdmin           Boolean       @default(false)
+  resetToken        String?
+  resetTokenExpires DateTime?
+  logs              ActivityLog[]
+  files             File[]
 }
 
 model File {

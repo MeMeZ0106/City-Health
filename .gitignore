@@ -8,7 +8,14 @@ yarn-error.log*
 
 # Uploads
 uploads/*
+backend/uploads/*
 !uploads/.gitkeep
+
+# Generated Prisma JS output
+backend/generated/client/*.js
+backend/generated/client/**/*.js
+backend/generated/client/**/*.mjs
+backend/generated/client/*.mjs
 
 # OS
 .DS_Store

@@ -1,10 +1,14 @@
 :root {
-  /* Industrial Palette */
+  /* Default Dark Palette */
   --bg-primary: #0f1115;
   --bg-secondary: #1a1d23;
   --bg-tertiary: #252a31;
+  --bg-input: #1a1d23;
+  --bg-hover: #252a31;
   
   --accent-primary: #f59e0b; /* Industrial Orange */
+  --accent-color: #f59e0b;
+  --accent-color-hover: #d97706;
   --accent-secondary: #3b82f6; /* Control Blue */
   --accent-success: #10b981;
   --accent-danger: #ef4444;
@@ -19,6 +23,28 @@
   --radius: 0px; /* Sharp industrial corners */
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Light Mode */
+[data-theme="light"] {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f3f5;
+  --bg-input: #ffffff;
+  --bg-hover: #f1f3f5;
+  
+  --accent-color: #d97706;
+  --accent-color-hover: #b45309;
+  --accent-secondary: #2563eb;
+  --accent-success: #059669;
+  --accent-danger: #dc2626;
+  
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  
+  --border-color: #d1d5db;
+  --border-active: #d97706;
 }
 
 * {
@@ -210,6 +236,39 @@ body {
   color: var(--text-primary);
 }
 
+.btn-prominent {
+  background-color: var(--accent-primary);
+  color: var(--bg-primary);
+  border: none;
+  padding: 0.75rem 2rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.1s;
+  box-shadow: 0 4px 0px var(--accent-color-hover);
+  position: relative;
+}
+
+.btn-prominent:hover {
+  background-color: var(--accent-color-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0px #92400e;
+}
+
+.btn-prominent:active {
+  transform: translateY(2px);
+  box-shadow: 0 0px 0px transparent;
+}
+
+.btn-prominent:disabled {
+  background-color: var(--text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Table */
 .table-responsive {
   background: var(--bg-secondary);
@@ -279,7 +338,8 @@ tr:hover td {
   width: 100%;
 }
 
-.secondary-button {
+.secondary-button,
+.btn-secondary {
   background-color: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -289,10 +349,13 @@ tr:hover td {
   font-size: 0.7rem;
   cursor: pointer;
   font-family: var(--font-mono);
+  transition: all 0.2s;
 }
 
-.secondary-button:hover {
+.secondary-button:hover,
+.btn-secondary:hover {
   border-color: var(--text-primary);
+  color: var(--accent-primary);
 }
 
 .view-button {

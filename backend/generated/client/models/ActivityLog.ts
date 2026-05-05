@@ -451,10 +451,6 @@ export type ActivityLogUncheckedUpdateManyWithoutFileNestedInput = {
   deleteMany?: Prisma.ActivityLogScalarWhereInput | Prisma.ActivityLogScalarWhereInput[]
 }
 
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
-}
-
 export type ActivityLogCreateWithoutUserInput = {
   action: string
   timestamp?: Date | string

@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import prisma from '../prisma.js';
+import { AuthRequest } from '../middleware/auth.js';
+import { validateInteger, validateString, validateOptionalString, validateUUID, validateDateRange, ValidationError, handleValidationError } from '../utils/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,42 +18,44 @@ export const getCategories = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
-  const { categoryId, categoryName, userId, username, fullName } = req.body;
-  const file = req.file;
-
-  if (!file) {
-    return res.status(400).json({ error: 'No file uploaded.' });
-  }
-
-  const parsedCategoryId = Number(categoryId);
-  if (!parsedCategoryId || !userId || !fullName) {
-    return res.status(400).json({ error: 'Missing required upload metadata.' });
-  }
-
+export const uploadFile = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const { categoryId, categoryName } = req.body;
+    const file = req.file;
+    const userId = req.userId;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded.' });
+    }
+
+    const validatedCategoryId = validateInteger(categoryId, 'Category ID');
+    const validatedUserId = validateUUID(userId, 'User ID');
+    const validatedCategoryName = validateOptionalString(categoryName, 'Category name', 100);
+
+    // Get user details
+    const user = await prisma.user.findUnique({
+      where: { id: validatedUserId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     const newFile = await prisma.file.create({
       data: {
         originalName: file.originalname,
         storedName: file.filename,
         category: {
           connectOrCreate: {
-            where: { id: parsedCategoryId },
+            where: { id: validatedCategoryId },
             create: {
-              id: parsedCategoryId,
-              name: categoryName || 'Uncategorized',
+              id: validatedCategoryId,
+              name: validatedCategoryName || 'Uncategorized',
             },
           },
         },
         uploadedBy: {
-          connectOrCreate: {
-            where: { id: userId },
-            create: {
-              id: userId,
-              username: username || `user-${userId}`,
-              fullName,
-            },
-          },
+          connect: { id: validatedUserId },
         },
       },
       include: {
@@ -62,7 +66,7 @@ export const uploadFile = async (req: Request, res: Response, next: NextFunction
 
     await prisma.activityLog.create({
       data: {
-        userId: userId,
+        userId: validatedUserId,
         action: 'UPLOAD',
         fileId: newFile.id,
       },
@@ -70,17 +74,20 @@ export const uploadFile = async (req: Request, res: Response, next: NextFunction
 
     res.status(201).json({ message: 'File uploaded successfully!', file: newFile });
   } catch (error) {
-    next(error);
+    handleValidationError(error, res, next);
   }
 };
 
-export const viewFile = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
-  const { userId, username, fullName } = req.query as Record<string, string>;
-
+export const viewFile = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    const validatedId = validateUUID(id, 'File ID');
+    const validatedUserId = validateUUID(userId, 'User ID');
+
     const file = await prisma.file.findUnique({
-      where: { id },
+      where: { id: validatedId },
       include: {
         category: true,
         uploadedBy: true,
@@ -91,30 +98,19 @@ export const viewFile = async (req: Request, res: Response, next: NextFunction) 
       return res.status(404).json({ error: 'File not found.' });
     }
 
-    if (userId && fullName) {
+    if (validatedUserId) {
       await prisma.activityLog.create({
         data: {
-          user: {
-            connectOrCreate: {
-              where: { id: userId },
-              create: {
-                id: userId,
-                username: username || `user-${userId}`,
-                fullName,
-              },
-            },
-          },
+          userId: validatedUserId,
           action: 'VIEW',
-          file: {
-            connect: { id },
-          },
+          fileId: validatedId,
         },
       });
     }
 
     res.json(file);
   } catch (error) {
-    next(error);
+    handleValidationError(error, res, next);
   }
 };
 
@@ -134,13 +130,15 @@ export const getFiles = async (req: Request, res: Response, next: NextFunction) 
 };
 
 export const getFilesByUser = async (req: Request, res: Response, next: NextFunction) => {
-  const { username } = req.params;
   try {
+    const { username } = req.params;
+    const validatedUsername = validateString(username, 'Username', 1, 100);
+
     const files = await prisma.file.findMany({
       where: {
         uploadedBy: {
           fullName: {
-            contains: username,
+            contains: validatedUsername,
           },
         },
       },
@@ -152,17 +150,131 @@ export const getFilesByUser = async (req: Request, res: Response, next: NextFunc
     });
     res.json(files);
   } catch (error) {
-    next(error);
+    handleValidationError(error, res, next);
   }
 };
 
-export const deleteFile = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
-  const { userId, username, fullName } = req.query as Record<string, string>;
-
+export const searchFiles = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const {
+      fileName,
+      categoryId,
+      uploaderName,
+      startDate,
+      endDate,
+      uploaderUsername
+    } = req.query;
+
+    const where: any = {};
+
+    if (fileName) {
+      const validatedFileName = validateString(fileName, 'File name', 1, 255);
+      where.originalName = {
+        contains: validatedFileName,
+      };
+    }
+
+    if (categoryId) {
+      const validatedCategoryId = validateInteger(categoryId, 'Category ID');
+      where.categoryId = validatedCategoryId;
+    }
+
+    if (uploaderName) {
+      const validatedUploaderName = validateString(uploaderName, 'Uploader name', 1, 255);
+      where.uploadedBy = {
+        fullName: {
+          contains: validatedUploaderName,
+        },
+      };
+    }
+
+    if (uploaderUsername) {
+      const validatedUploaderUsername = validateString(uploaderUsername, 'Uploader username', 1, 100);
+      where.uploadedBy = {
+        ...where.uploadedBy,
+        username: {
+          contains: validatedUploaderUsername,
+        },
+      };
+    }
+
+    const { start, end } = validateDateRange(startDate as string, endDate as string);
+    if (start || end) {
+      where.createdAt = {};
+      if (start) where.createdAt.gte = start;
+      if (end) where.createdAt.lte = end;
+    }
+
+    const files = await prisma.file.findMany({
+      where,
+      include: {
+        category: true,
+        uploadedBy: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(files);
+  } catch (error) {
+    handleValidationError(error, res, next);
+  }
+};
+
+export const updateFile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { originalName, categoryId } = req.body;
+    const userId = req.userId;
+
+    const validatedId = validateUUID(id, 'File ID');
+    const validatedUserId = validateUUID(userId, 'User ID');
+    const validatedOriginalName = validateString(originalName, 'Original name', 1, 255);
+    const validatedCategoryId = validateInteger(categoryId, 'Category ID');
+
     const file = await prisma.file.findUnique({
-      where: { id },
+      where: { id: validatedId },
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: 'File not found.' });
+    }
+
+    const updatedFile = await prisma.file.update({
+      where: { id: validatedId },
+      data: {
+        originalName: validatedOriginalName,
+        categoryId: validatedCategoryId,
+      },
+      include: {
+        category: true,
+        uploadedBy: true,
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: validatedUserId,
+        action: 'UPDATE',
+        fileId: validatedId,
+      },
+    });
+
+    res.json({ message: 'File updated successfully!', file: updatedFile });
+  } catch (error) {
+    handleValidationError(error, res, next);
+  }
+};
+
+export const deleteFile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    const validatedId = validateUUID(id, 'File ID');
+    const validatedUserId = validateUUID(userId, 'User ID');
+
+    const file = await prisma.file.findUnique({
+      where: { id: validatedId },
     });
 
     if (!file) {
@@ -170,31 +282,23 @@ export const deleteFile = async (req: Request, res: Response, next: NextFunction
     }
 
     // Create activity log before deleting file record
-    if (userId && fullName) {
+    if (validatedUserId) {
       await prisma.activityLog.create({
         data: {
-          user: {
-            connectOrCreate: {
-              where: { id: userId },
-              create: {
-                id: userId,
-                username: username || `user-${userId}`,
-                fullName,
-              },
-            },
-          },
+          userId: validatedUserId,
           action: 'DELETE',
+          fileId: validatedId,
         },
       });
     }
 
     // Delete file from database - Prisma will handle logs referencing this file
     await prisma.activityLog.deleteMany({
-      where: { fileId: id },
+      where: { fileId: validatedId },
     });
 
     await prisma.file.delete({
-      where: { id },
+      where: { id: validatedId },
     });
 
     // Delete file from filesystem AFTER DB deletion for consistency
@@ -209,52 +313,8 @@ export const deleteFile = async (req: Request, res: Response, next: NextFunction
 
     res.json({ message: 'File deleted successfully!' });
   } catch (error) {
-    next(error);
+    handleValidationError(error, res, next);
   }
 };
 
-export const updateFile = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
-  const { originalName, categoryId, userId, username, fullName } = req.body;
 
-  try {
-    const updatedFile = await prisma.file.update({
-      where: { id },
-      data: {
-        originalName,
-        category: {
-          connect: { id: Number(categoryId) },
-        },
-      },
-      include: {
-        category: true,
-        uploadedBy: true,
-      },
-    });
-
-    if (userId && fullName) {
-      await prisma.activityLog.create({
-        data: {
-          user: {
-            connectOrCreate: {
-              where: { id: userId },
-              create: {
-                id: userId,
-                username: username || `user-${userId}`,
-                fullName,
-              },
-            },
-          },
-          action: 'UPDATE',
-          file: {
-            connect: { id },
-          },
-        },
-      });
-    }
-
-    res.json({ message: 'File updated successfully!', file: updatedFile });
-  } catch (error) {
-    next(error);
-  }
-};

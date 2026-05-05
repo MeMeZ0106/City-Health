@@ -75,8 +75,18 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 
 export const UserScalarFieldEnum = {
   id: 'id',
+  email: 'email',
   username: 'username',
-  fullName: 'fullName'
+  fullName: 'fullName',
+  password: 'password',
+  phoneNumber: 'phoneNumber',
+  address: 'address',
+  province: 'province',
+  cityMun: 'cityMun',
+  barangay: 'barangay',
+  isAdmin: 'isAdmin',
+  resetToken: 'resetToken',
+  resetTokenExpires: 'resetTokenExpires'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -121,10 +131,26 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
 export const UserOrderByRelevanceFieldEnum = {
   id: 'id',
+  email: 'email',
   username: 'username',
-  fullName: 'fullName'
+  fullName: 'fullName',
+  password: 'password',
+  phoneNumber: 'phoneNumber',
+  address: 'address',
+  province: 'province',
+  cityMun: 'cityMun',
+  barangay: 'barangay',
+  resetToken: 'resetToken'
 } as const
 
 export type UserOrderByRelevanceFieldEnum = (typeof UserOrderByRelevanceFieldEnum)[keyof typeof UserOrderByRelevanceFieldEnum]
@@ -145,14 +171,6 @@ export const CategoryOrderByRelevanceFieldEnum = {
 } as const
 
 export type CategoryOrderByRelevanceFieldEnum = (typeof CategoryOrderByRelevanceFieldEnum)[keyof typeof CategoryOrderByRelevanceFieldEnum]
-
-
-export const NullsOrder = {
-  first: 'first',
-  last: 'last'
-} as const
-
-export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
 export const ActivityLogOrderByRelevanceFieldEnum = {
